@@ -49,6 +49,7 @@
       table {
         text-align: center;
         margin-bottom: 20px;
+        width: 100%;
       }
       td {
         padding: 5px 10px;
@@ -133,6 +134,17 @@
       <div id="sidebar">
         <h1 id="title">Most Popular Baby Names By State in 2022</h1>
         <div id="names">
+          <div>
+            <input
+              type="range"
+              id="year"
+              name="year"
+              min="1910"
+              max="2022"
+              step="1"
+              value="2022"
+            />
+          </div>
           <h2 id="names-title"></h2>
           <table class="female">
             <tbody id="female-table"></tbody>
@@ -172,13 +184,17 @@
       //   return [min, max];
       // }
 
-      // const yearSelector = document.getElementById("year");
-      // yearSelector.addEventListener("change", (e) => {
-      //   console.log(e.value);
-      //   document.getElementById(
-      //     "title"
-      //   ).innerHTML = `Most Popular Baby Name By State in ${e.target}`;
-      // });
+      let year = "2022";
+      let data = {};
+      const yearSelector = document.getElementById("year");
+      yearSelector.addEventListener("change", (e) => {
+        console.log(e.value);
+        document.getElementById(
+          "title"
+        ).innerHTML = `Most Popular Baby Names By State in ${e.target.value}`;
+        year = e.target.value;
+        getPopularNames(data);
+      });
 
       var tooltip = d3
         .select("body")
@@ -226,7 +242,7 @@
               tooltip.transition().duration(200).style("opacity", 0.9);
               tooltip
                 .html(
-                  `<p>${d.properties.names["2022"].F[0].name} & ${d.properties.names["2022"].M[0].name}</p>`
+                  `<p>${d.properties.names[year].F[0].name} & ${d.properties.names[year].M[0].name}</p>`
                 )
                 .style("right", "0px")
                 .style("top", "0px");
@@ -246,32 +262,7 @@
                 .style("opacity", 0.3)
                 .style("stroke-width", "1px");
             })
-            .on("click", (d) => {
-              document.getElementById("names-title").innerHTML =
-                d.properties.name;
-
-              const femaleTableRows = d.properties.names["2022"]["F"].map(
-                ({ name, count }) =>
-                  `<tr>
-                    <td>${name}</td>
-                    <td>${count}</td>
-                  </tr>`
-              );
-
-              document.getElementById("female-table").innerHTML =
-                femaleTableRows.join("");
-
-              const maleTableRows = d.properties.names["2022"]["M"].map(
-                ({ name, count }) =>
-                  `<tr>
-                    <td>${name}</td>
-                    <td>${count}</td>
-                  </tr>`
-              );
-
-              document.getElementById("male-table").innerHTML =
-                maleTableRows.join("");
-            });
+            .on("click", getPopularNames);
 
           function update() {
             states.attr("d", path);
@@ -283,6 +274,33 @@
         .catch((err) => {
           console.error("error fetching state boundaries", err);
         });
+
+      function getPopularNames(d) {
+        data = d;
+        document.getElementById("names-title").innerHTML = d.properties.name;
+
+        const femaleTableRows = d.properties.names[year]["F"].map(
+          ({ name, count }) =>
+            `<tr>
+                    <td>${name}</td>
+                    <td>${count}</td>
+                  </tr>`
+        );
+
+        document.getElementById("female-table").innerHTML =
+          femaleTableRows.join("");
+
+        const maleTableRows = d.properties.names[year]["M"].map(
+          ({ name, count }) =>
+            `<tr>
+                    <td>${name}</td>
+                    <td>${count}</td>
+                  </tr>`
+        );
+
+        document.getElementById("male-table").innerHTML =
+          maleTableRows.join("");
+      }
 
       // var color = d3
       //   .scaleLinear()
