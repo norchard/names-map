@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Display a globe on a webpage</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script
+      src="https://unpkg.com/d3@5.9.7/dist/d3.min.js"
+      type="text/javascript"
+    ></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+      }
+      #container {
+        display: flex;
+        width: 100%;
+        flex-grow: 1;
+      }
+      #sidebar {
+        width: 200px;
+        height: 100%;
+        flex-shrink: 0;
+        padding: 30px;
+      }
+      #container {
+        height: 100vh;
+        width: 100%;
+      }
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+      .mapboxgl-canvas {
+        z-index: -1;
+      }
+      table {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      td {
+        padding: 5px 10px;
+      }
+      .female td {
+        background-color: pink;
+      }
+      .male td {
+        background-color: rgb(171, 196, 241);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <div id="sidebar">
+        <h1>Most Popular Baby Name By State in 2022</h1>
+        <div id="names">
+          <h2 id="names-title">Colorado</h2>
+          <table class="female">
+            <tbody id="female-table"></tbody>
+            <tr></tr>
+          </table>
+          <table class="male">
+            <tbody id="male-table"></tbody>
+            <tr></tr>
+          </table>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <script>
+      mapboxgl.accessToken =
+        "pk.eyJ1Ijoibm9yY2gyIiwiYSI6ImNsbnBjczQzMTA3aGsyaW1oaWJyN3MxaHgifQ.5sKVbEIJUJQmMoE7rkXL2Q";
+      const map = new mapboxgl.Map({
+        container: "map",
+        style: "mapbox://styles/mapbox/light-v9",
+        center: [-96.958809, 39.281168],
+        zoom: 3.5,
+      });
+
+      // function getDensityRange(states) {
+      //   const min = infinity;
+      //   const max = -infinity;
+      //   states.forEach((state) => {
+      //     const { density } = state.properties;
+      //     if (density < min) {
+      //       min = density;
+      //     }
+      //     if (density > max) {
+      //       max = density;
+      //     }
+      //   });
+      //   return [min, max];
+      // }
+
+      d3.json("./data/state-boundaries-and-names.geojson")
+        .then((data) => {
+          console.log(data.features);
+          // Create d3 container to plot artwork points
+          // According to Mapbox, `getCanvasContainer` returns the HTML element containing the map's <canvas> element.
+          // -> If you want to add non-GL overlays to the map, you should append them to this element.
+          const canvasContainer = map.getCanvasContainer();
+          console.log(map.getCanvasContainer());
+          const svg = d3
+            .select(canvasContainer)
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100vh")
+            .attr("position", "absolute")
+            .style("z-index", 2);
+
+          // Map d3 projection coordinates to Mapbox map coordinates
+          function projectPoint(lng, lat) {
+            var point = map.project(new mapboxgl.LngLat(lng, lat));
+            this.stream.point(point.x, point.y);
+          }
+          const transform = d3.geoTransform({ point: projectPoint });
+          const path = d3.geoPath().projection(transform);
+          // function project(d) {
+          //   return map.project(new mapboxgl.LngLat(d[0], d[1]));
+          // }
+
+          const states = svg
+            .selectAll("path")
+            .data(data.features)
+            .enter()
+            .append("path")
+            .attr("stroke", "green")
+            .attr("fill", "lightgreen")
+            .attr("opacity", 0.5)
+            .on("click", (d) => {
+              document.getElementById("names-title").innerHTML =
+                d.properties.name;
+
+              const tableRows = d.properties.names["2022"]["F"].map(
+                ({ name, count }) =>
+                  `<tr>
+                    <td>${name}</td>
+                    <td>${count}</td>
+                  </tr>`
+              );
+
+              document.getElementById("female-table").innerHTML =
+                tableRows.join("");
+
+              // d.properties.names["2022"]["F"];
+              // <p>Female: ${d.properties.names["2022"]["F"][0]["name"]}</p><p>Male: ${d.properties.names["2022"]["M"][0]["name"]}</p>
+              // names.innerHTML = femaleNames;
+            });
+
+          function update() {
+            states.attr("d", path);
+          }
+          map.on("viewreset", update);
+          map.on("move", update);
+          update();
+        })
+        .catch((err) => {
+          console.error("error fetching state boundaries", err);
+        });
+
+      // var color = d3
+      //   .scaleLinear()
+      //   .domain([0, 2, 4, 6, 8, 10, 12, 14, 16, 18])
+      //   .range([
+      //     "#f2563a",
+      //     "#f2b721",
+      //     "#ff8647",
+      //     "#99aa00",
+      //     "#4297dd",
+      //     "#19b78a",
+      //     "#6c6afc",
+      //     "#ce3bc9",
+      //     "#ff5661",
+      //   ]);
+      // var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+      // Point radius closure could not be written as an arrow function
+      // because arrow functions do not bind `this`
+      //   .attr(
+      //     "d",
+      //     path.pointRadius(function (d) {
+      //       if (d3.select(this).attr("class") == "select") return 20;
+      //       else return 8;
+      //     })
+      //   )
+      //   .attr("fill", (d, i) => color(i % 18))
+      //   .attr("stroke-width", 2)
+      //   .attr("stroke", "white")
+      //   .on("click", (d) => clickHandler(d, map, update))
+      //   .on("mouseover", (d) => handleMouseOver(d))
+      //   .on("mouseout", (d) => handleMouseOut(d));
+
+      // var labels = svg
+      //   .selectAll(".label")
+      //   .data(geojson)
+      //   .enter()
+      //   .append("text")
+      //   .attr("class", "label hide")
+      //   .attr("fill", (d, i) => color(i % 18))
+      //   .attr("x", (d) => path.centroid(d)[0] + 10)
+      //   .attr("y", (d) => path.centroid(d)[1] + 4)
+      //   .attr("max-width", "150px")
+      //   .text((d, i) => d.properties.name.toString());
+
+      // function handleMouseOver(d) {
+      //   d.properties.label.classed("hide", false);
+      // }
+      // function handleMouseOut(d) {
+      //   d.properties.label.classed("hide", true);
+      // }
+
+      // geojson.forEach(function (artwork, index) {
+      //   artwork.properties.label = labels.filter((d, i) => i == index);
+      //   artwork.properties.path = points.filter((d, i) => i == index);
+      //   artwork.properties.div = d3.select("#text").append("div");
+
+      //   artwork.properties.div
+      //     .attr("class", "artwork")
+      //     .style("background-color", (d) => {
+      //       return color(index % 18);
+      //     })
+      //     .append("h2")
+      //     .html(artwork.properties.name)
+      //     .on("click", () => {
+      //       clickHandler(artwork, map, update);
+      //     })
+      //     .append("p")
+      //     .attr("class", "artist")
+      //     .classed("no-wrap", true)
+      //     .html(artwork.properties.artist);
+      // });
+
+      // function update() {
+      //   points.attr("d", path);
+      //   labels
+      //     .attr("x", (d) => path.centroid(d)[0] + 10)
+      //     .attr("y", (d) => path.centroid(d)[1] + 4);
+      // }
+      // map.on("viewreset", update);
+      // map.on("move", update);
+      // update();
+
+      //   let isMale = document.getElementById("male").checked;
+
+      //   const INITIAL_CENTER = [-96.958809, 39.281168];
+      //   const INITIAL_ZOOM = 3.5;
+      //   mapboxgl.accessToken =
+      //     "pk.eyJ1Ijoibm9yY2gyIiwiYSI6ImNsbnBjczQzMTA3aGsyaW1oaWJyN3MxaHgifQ.5sKVbEIJUJQmMoE7rkXL2Q";
+      //   const map = new mapboxgl.Map({
+      //     container: "map",
+      //     // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
+      //     style: "mapbox://styles/mapbox/light-v11",
+      //     zoom: INITIAL_ZOOM,
+      //     center: INITIAL_CENTER, // lng, lat
+      //     projection: "mercator",
+      //   });
+
+      //   map.on("load", () => {
+      //     map.addSource("states", {
+      //       type: "geojson",
+      //       data: "data/state-boundaries.geojson",
+      //       promoteId: "name",
+      //     });
+
+      //     map.addLayer(
+      //       {
+      //         id: "states-fill",
+      //         type: "fill",
+      //         source: "states",
+      //         paint: {
+      //           "fill-color": [
+      //             "case",
+      //             ["boolean", ["feature-state", "hover"], false],
+      //             "pink",
+      //             "steelblue",
+      //           ],
+      //           "fill-opacity": [
+      //             "case",
+      //             ["boolean", ["feature-state", "hover"], false],
+      //             1,
+      //             0.3,
+      //           ],
+      //         },
+      //       },
+      //       "road-label-simple"
+      //     );
+
+      //     map.addLayer(
+      //       {
+      //         id: "states-outline",
+      //         type: "line",
+      //         source: "states",
+      //         paint: {
+      //           "line-color": "red",
+      //           "line-width": 1,
+      //         },
+      //       },
+      //       "road-label-simple"
+      //     );
+
+      //     let hoveredPolygonId = null;
+
+      //     map.on("mousemove", "states-fill", (e) => {
+      //       if (e.features.length > 0) {
+      //         if (hoveredPolygonId !== null) {
+      //           map.setFeatureState(
+      //             { source: "states", id: hoveredPolygonId },
+      //             { hover: false }
+      //           );
+      //         }
+      //         hoveredPolygonId = e.features[0].id;
+      //         map.setFeatureState(
+      //           { source: "states", id: hoveredPolygonId },
+      //           { hover: true }
+      //         );
+      //       }
+      //     });
+
+      //     map.on("mouseleave", "states-fill", () => {
+      //       if (hoveredPolygonId !== null) {
+      //         map.setFeatureState(
+      //           { source: "states", id: hoveredPolygonId },
+      //           { hover: false }
+      //         );
+      //       }
+      //       hoveredPolygonId = null;
+      //     });
+      //   });
+    </script>
+  </body>
+</html>
