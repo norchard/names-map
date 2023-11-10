@@ -59,14 +59,81 @@
       .male td {
         background-color: rgb(171, 196, 241);
       }
+      .tooltip {
+        background-color: rgb(142, 203, 148);
+        padding: 5px;
+        line-height: 0em;
+        margin-top: 5px;
+      }
+      input[type="range"] {
+        height: 39px;
+        -webkit-appearance: none;
+        margin: 10px 0;
+        width: 100%;
+      }
+      input[type="range"]:focus {
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 10px;
+        cursor: pointer;
+        animate: 0.2s;
+        box-shadow: 0px 0px 0px #000000;
+        background: #87a976;
+        border-radius: 5px;
+        border: 0px solid #000000;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        box-shadow: 0px 0px 0px #000000;
+        border: 3px solid #394f2c;
+        height: 30px;
+        width: 30px;
+        border-radius: 21px;
+        background: #ffffff;
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -11.5px;
+      }
+      input[type="range"]:focus::-webkit-slider-runnable-track {
+        background: #87a976;
+      }
+      input[type="range"]::-moz-range-track {
+        width: 100%;
+        height: 10px;
+        cursor: pointer;
+        animate: 0.2s;
+        box-shadow: 0px 0px 0px #000000;
+        background: #87a976;
+        border-radius: 5px;
+        border: 0px solid #000000;
+      }
+      input[type="range"]::-moz-range-thumb {
+        box-shadow: 0px 0px 0px #000000;
+        border: 3px solid #394f2c;
+        height: 30px;
+        width: 30px;
+        border-radius: 21px;
+        background: #ffffff;
+        cursor: pointer;
+      }
+      input[type="range"]::-ms-track {
+        width: 100%;
+        height: 10px;
+        cursor: pointer;
+        animate: 0.2s;
+        background: transparent;
+        border-color: transparent;
+        color: transparent;
+      }
     </style>
   </head>
   <body>
     <div id="container">
       <div id="sidebar">
-        <h1>Most Popular Baby Name By State in 2022</h1>
+        <h1 id="title">Most Popular Baby Names By State in 2022</h1>
         <div id="names">
-          <h2 id="names-title">Colorado</h2>
+          <h2 id="names-title"></h2>
           <table class="female">
             <tbody id="female-table"></tbody>
             <tr></tr>
@@ -105,6 +172,21 @@
       //   return [min, max];
       // }
 
+      // const yearSelector = document.getElementById("year");
+      // yearSelector.addEventListener("change", (e) => {
+      //   console.log(e.value);
+      //   document.getElementById(
+      //     "title"
+      //   ).innerHTML = `Most Popular Baby Name By State in ${e.target}`;
+      // });
+
+      var tooltip = d3
+        .select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0)
+        .style("position", "absolute");
+
       d3.json("./data/state-boundaries-and-names.geojson")
         .then((data) => {
           console.log(data.features);
@@ -139,12 +221,36 @@
             .append("path")
             .attr("stroke", "green")
             .attr("fill", "lightgreen")
-            .attr("opacity", 0.5)
+            .attr("opacity", 0.3)
+            .on("mouseover", function (d, i) {
+              tooltip.transition().duration(200).style("opacity", 0.9);
+              tooltip
+                .html(
+                  `<p>${d.properties.names["2022"].F[0].name} & ${d.properties.names["2022"].M[0].name}</p>`
+                )
+                .style("right", "0px")
+                .style("top", "0px");
+
+              d3.select(this)
+                .transition()
+                .duration(200)
+                .style("opacity", 0.6)
+                .style("stroke", "green")
+                .style("stroke-width", "2px");
+            })
+            .on("mouseout", function (d) {
+              tooltip.transition().duration(200).style("opacity", 0);
+              d3.select(this)
+                .transition()
+                .duration(200)
+                .style("opacity", 0.3)
+                .style("stroke-width", "1px");
+            })
             .on("click", (d) => {
               document.getElementById("names-title").innerHTML =
                 d.properties.name;
 
-              const tableRows = d.properties.names["2022"]["F"].map(
+              const femaleTableRows = d.properties.names["2022"]["F"].map(
                 ({ name, count }) =>
                   `<tr>
                     <td>${name}</td>
@@ -153,11 +259,18 @@
               );
 
               document.getElementById("female-table").innerHTML =
-                tableRows.join("");
+                femaleTableRows.join("");
 
-              // d.properties.names["2022"]["F"];
-              // <p>Female: ${d.properties.names["2022"]["F"][0]["name"]}</p><p>Male: ${d.properties.names["2022"]["M"][0]["name"]}</p>
-              // names.innerHTML = femaleNames;
+              const maleTableRows = d.properties.names["2022"]["M"].map(
+                ({ name, count }) =>
+                  `<tr>
+                    <td>${name}</td>
+                    <td>${count}</td>
+                  </tr>`
+              );
+
+              document.getElementById("male-table").innerHTML =
+                maleTableRows.join("");
             });
 
           function update() {
